@@ -1,0 +1,76 @@
+// LeaveRequestForm.jsx
+import React, { useState } from 'react';
+import axios from 'axios';
+
+function LeaveRequestForm() {
+  const [leaveText, setLeaveText] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
+  const [extractedInfo, setExtractedInfo] = useState(null);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage('');
+    
+    try {
+      // First, extract information using AI
+      const extractResponse = await axios.post('/api/extract-leave-info/', { text: leaveText });
+      const extractedData = extractResponse.data;
+      setExtractedInfo(extractedData);
+      
+      // Then submit the leave request
+      const userId = 1; // In a real app, get this from auth context
+      const response = await axios.post('/api/leave-requests/', {
+        user_id: userId,
+        leave_type: extractedData.leave_type,
+        start_date: extractedData.start_date,
+        end_date: extractedData.end_date,
+        reason: extractedData.reason
+      });
+      
+      setMessage('Leave request submitted successfully!');
+    } catch (error) {
+      setMessage(`Error: ${error.response?.data?.detail || error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="leave-request-form">
+      <h2>Submit Leave Request</h2>
+      <form onSubmit={handleSubmit}>
+        <div className="form-group">
+          <label>
+            Describe your leave request:
+            <textarea 
+              value={leaveText} 
+              onChange={(e) => setLeaveText(e.target.value)}
+              placeholder="Example: I need sick leave from tomorrow due to a medical treatment, from 11.11.25 to 12.12.25."
+              rows={4}
+              required
+            />
+          </label>
+        </div>
+        <button type="submit" disabled={loading}>
+          {loading ? 'Processing...' : 'Submit Request'}
+        </button>
+      </form>
+      
+      {extractedInfo && (
+        <div className="extracted-info">
+          <h3>Extracted Information:</h3>
+          <p><strong>Leave Type:</strong> {extractedInfo.leave_type}</p>
+          <p><strong>Start Date:</strong> {extractedInfo.start_date}</p>
+          <p><strong>End Date:</strong> {extractedInfo.end_date}</p>
+          <p><strong>Reason:</strong> {extractedInfo.reason}</p>
+        </div>
+      )}
+      
+      {message && <div className="message">{message}</div>}
+    </div>
+  );
+}
+
+export default LeaveRequestForm;

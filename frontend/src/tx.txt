@@ -1,0 +1,62 @@
+import React, { useState } from 'react';
+
+function App() {
+  const [inputValue, setInputValue] = useState('');
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (inputValue.trim()) {
+      setSubmitted(true);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+      <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
+        <h1 className="text-2xl font-bold mb-6 text-gray-800">Simple Form</h1>
+        
+        {submitted ? (
+          <div className="text-center">
+            <div className="mb-4 text-green-600 font-semibold">Form submitted successfully!</div>
+            <div className="mb-6">You entered: <span className="font-medium">{inputValue}</span></div>
+            <button 
+              onClick={() => {
+                setInputValue('');
+                setSubmitted(false);
+              }}
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+            >
+              Submit Another
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label htmlFor="textInput" className="block text-sm font-medium text-gray-700 mb-1">
+                Enter Text
+              </label>
+              <input
+                id="textInput"
+                type="text"
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Type something..."
+                required
+              />
+            </div>
+            <button
+              type="submit"
+              className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-colors"
+            >
+              Submit
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default App;

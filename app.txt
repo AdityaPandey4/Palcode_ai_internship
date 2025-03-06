@@ -1,0 +1,116 @@
+# app.py (using FastAPI with CrewAI)
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+import os
+import json
+from typing import Optional
+from crewai import Agent, Task, Crew
+
+app = FastAPI()
+
+# Add CORS middleware to allow requests from frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # In production, replace with specific origin
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Configure CrewAI with Gemini
+os.environ["GEMINI_API_KEY"] = "AIzaSyDnYSx2KrA1lfgUPAf8PfY8dsHW8Bga4uM"
+
+# Input model
+class LeaveRequest(BaseModel):
+    text: str
+
+# Output model
+class ExtractedInfo(BaseModel):
+    leave_type: str
+    start_date: str
+    end_date: str
+    reason: str
+    user_id: Optional[str] = None
+
+# CrewAI setup
+# llm = LLM(
+#     model="gemini/gemini-2.0-flash",
+# )
+
+@app.post("/extract-leave-info/", response_model=ExtractedInfo)
+async def extract_leave_info(request: LeaveRequest):
+    try:
+        # Initialize the CrewAI agent
+        leave_approval_agent = Agent(
+            role=" Gemini Leave Request Processor",
+            goal="Extract leave type, start/end dates, reason, and user identifier from a natural language leave request.",
+            backstory="You are an expert in natural language processing focused on HR tasks. "
+                     "Your mission is to parse and accurately extract leave details from user requests.",
+            verbose=True,
+            allow_delegations=False,
+            llm="gemini/gemini-2.0-flash",
+        )
+
+        # Create the task
+        process_leave_request = Task(
+            description="Parse the natural language leave request from the text to extract the following:\n"
+                       "- Leave type (e.g., Sick, Vacation, etc.)\n"
+                       "- Start date\n"
+                       "- End date\n"
+                       "- Reason for leave\n"
+                       "- User identifier (if present)",
+            expected_output="A JSON object with keys: leave_type, start_date, end_date, reason, user_id.",
+            agent=leave_approval_agent,
+        )
+
+        # Setup the crew
+        leave_approval_crew = Crew(
+            agents=[leave_approval_agent],
+            tasks=[process_leave_request],
+            verbose=True,
+        )
+
+        # Process the request
+        result = leave_approval_crew.kickoff(inputs={"request": request.text})
+        
+        # Parse the result - assuming it returns a JSON string
+        # Handle different possible formats of the result
+        try:
+            # Try direct JSON parsing
+            if isinstance(result, str):
+                extracted_info = json.loads(result)
+            elif isinstance(result, dict):
+                extracted_info = result
+            else:
+                # If result is neither string nor dict, convert to string and try to find JSON
+                result_str = str(result)
+                # Look for JSON-like content between curly braces
+                import re
+                json_match = re.search(r'\{.*\}', result_str, re.DOTALL)
+                if json_match:
+                    extracted_info = json.loads(json_match.group(0))
+                else:
+                    raise ValueError("Could not extract JSON from result")
+                
+            return ExtractedInfo(
+                leave_type=extracted_info.get("leave_type", "Unknown"),
+                start_date=extracted_info.get("start_date", ""),
+                end_date=extracted_info.get("end_date", ""),
+                reason=extracted_info.get("reason", ""),
+                user_id=extracted_info.get("user_id", None)
+            )
+        except json.JSONDecodeError:
+            # If JSON parsing fails, extract information using regex or other methods
+            raise HTTPException(status_code=500, detail=f"Failed to parse result as JSON: {result}")
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing request: {str(e)}")
+
+@app.get("/")
+def read_root():
+    return {"message": "Leave Approval Agent API is running"}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

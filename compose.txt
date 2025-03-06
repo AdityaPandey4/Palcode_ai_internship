@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  # Frontend Service
+  frontend:
+    depends_on:
+      - backend
+    build: 
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_BASE_URL=http://backend:8000
+    networks:
+      - leave-app-network
+
+  # Backend Service
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "57230:8000"
+    volumes:
+      - ./backend:/app
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - DATABASE_URL=postgresql://user:password@db:5432/leaveapp
+    depends_on:
+      - db
+    networks:
+      - leave-app-network
+
+  # Database Service
+  db:
+    image: postgres:13
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=leaveapp
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - leave-app-network
+
+# Volume for persistent database data
+volumes:
+  postgres_data:
+
+# Network for inter-container communication
+networks:
+  leave-app-network:
+    driver: bridge

@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:5173"  # Vite default port
+    environment:
+      - VITE_API_BASE_URL=http://backend:8000  # Docker internal communication
+    networks:
+      - leave-app-network
+    depends_on:
+      - backend
+
+  backend:
+    build: ./backend
+    ports:
+      - "57230:8000"  # Host:Container port mapping
+    networks:
+      - leave-app-network
+    depends_on:
+      - db
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  db:
+    image: postgres:13
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=leaveapp
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - leave-app-network
+
+volumes:
+  postgres_data:
+
+networks:
+  leave-app-network:
+    driver: bridge
