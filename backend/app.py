@@ -25,7 +25,7 @@ app.add_middleware(
 api_router = APIRouter(prefix="/api")  # Prefix for all API routes
 
 # Configure CrewAI with Gemini
-os.environ["GEMINI_API_KEY"] = "AIzaSyDnYSx2KrA1lfgUPAf8PfY8dsHW8Bga4uM"
+os.environ["GEMINI_API_KEY"] = "API_KEY"
 
 llm = LLM(
     model="gemini/gemini-2.0-flash"
